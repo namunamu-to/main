@@ -1,0 +1,68 @@
+package main
+
+import (
+	"bufio"
+	"crypto/tls"
+	"fmt"
+	"io"
+	"net/http"
+
+	"github.com/google/uuid"
+)
+
+func MakeUuid() string {
+	id := uuid.New()
+	return id.String()
+}
+
+func index(w http.ResponseWriter, r *http.Request) {
+	println("get index")
+	fmt.Fprintf(w, ReadFileStr("index.html"))
+}
+
+func ruleCollapseShogi(w http.ResponseWriter, r *http.Request) {
+	println("post")
+	// バッファ付きリーダーを作成
+	reader := bufio.NewReader(r.Body)
+	// lines := ""
+
+	for {
+		line, err := reader.ReadString('\n')
+		if err == io.EOF {
+			break
+		}
+
+		fmt.Fprintf(w, line)
+	}
+}
+
+func main() {
+	//uuid
+	p1Uuid := MakeUuid()
+	p2Uuid := MakeUuid()
+	println(p1Uuid)
+	println(p2Uuid)
+
+	// ハンドラの設定
+	mux := http.NewServeMux() //ミューテックス。すでに起動してるか確認。
+	mux.HandleFunc("/", index)
+	mux.HandleFunc("/ruleCollapseShogi", ruleCollapseShogi)
+
+	//tls設定
+	cfg := &tls.Config{
+		ClientAuth: tls.RequestClientCert,
+	}
+
+	//サーバー設定
+	srv := &http.Server{
+		Addr:      ":8443",
+		Handler:   mux,
+		TLSConfig: cfg,
+	}
+
+	ListenErr := srv.ListenAndServeTLS("/etc/letsencrypt/live/os3-382-24260.vs.sakura.ne.jp/fullchain.pem", "/etc/letsencrypt/live/os3-382-24260.vs.sakura.ne.jp/privkey.pem")
+
+	if ListenErr != nil {
+		println(ListenErr)
+	}
+}
