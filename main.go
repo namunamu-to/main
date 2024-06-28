@@ -13,9 +13,9 @@ import (
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
-	// CheckOrigin: func(r *http.Request) bool {
-	// 	return true
-	// },
+	CheckOrigin: func(r *http.Request) bool {
+		return true
+	},
 }
 
 type player struct {
@@ -184,7 +184,8 @@ func main() {
 
 	// http.HandleFunc("/postRequest", handler)
 	println("サーバー起動")
-	err := srv.ListenAndServeTLS("/etc/letsencrypt/live/os3-382-24260.vs.sakura.ne.jp/fullchain.pem", "/etc/letsencrypt/live/os3-382-24260.vs.sakura.ne.jp/privkey.pem")
+	// err := srv.ListenAndServeTLS("/etc/letsencrypt/live/os3-382-24260.vs.sakura.ne.jp/fullchain.pem", "/etc/letsencrypt/live/os3-382-24260.vs.sakura.ne.jp/privkey.pem")
+	err := srv.ListenAndServeTLS("./fullchain.pem", "./privkey.pem")
 	if err != nil {
 		println(err.Error())
 	}
