@@ -1,0 +1,1 @@
+sudo go run main.go mashGame.go data.go azInputGame.go
