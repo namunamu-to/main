@@ -83,6 +83,16 @@ func JsonToMap(jsonString string) (map[string]string, error) {
 	return data, nil
 }
 
+type msgJson struct {
+	Category, Msg string
+}
+
+func strToMsgJson(jsonString string) (msgJson, error) {
+	var msg msgJson
+	err := json.Unmarshal([]byte(jsonString), &msg)
+	return msg, err
+}
+
 func WriteFile(filePath string, writeStr string) {
 	// 1. 書き込み先のファイル作成
 	f, err := os.Create(filePath)

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"net/http"
 	"strconv"
 	"time"
 )
@@ -38,15 +37,7 @@ func updateAzGameRanking(userName string, newScore int) int {
 	return ranking + 1
 }
 
-func azInputGameGameCmd(w http.ResponseWriter, r *http.Request) {
-	initResponseHeader(w, r)
-	// upgrader.CheckOrigin = func(r *http.Request) bool { return true }
-	//リモートアドレスからのアクセスを許可する
-	conn, _ := upgrader.Upgrade(w, r, nil)
-
-	log := time.Now().Format("2006/1/2 15:04:05") + " | " + r.RemoteAddr
-	WriteFileAppend(azInputGameFiles["accessLog"], log)
-
+func azInputGameGame(plData player, msg string) {
 	//プレイ中の情報
 	playing := false
 	nextKey := string(azList[0])
@@ -55,55 +46,46 @@ func azInputGameGameCmd(w http.ResponseWriter, r *http.Request) {
 	name := "名無し"
 	myRank := len(azInputGameRankingData)
 
-	// 無限ループさせ、接続が切れないようにする
-	for {
-		_, msg, err := conn.ReadMessage()
-		if err != nil { //通信終了時の処理
-			break
+	cmd, cmdType, cmdLen := readCmd(msg)
+
+	if cmdType == "startGame" && cmdLen == 2 { //ゲーム開始コマンド。想定コマンド = startGame userName
+		if cmd[1] != "" { //名前が空じゃなかったら、名前を更新
+			name = cmd[1]
 		}
 
-		//msgのコマンド読み取り
-		cmd, _, cmdLen := readCmd(string(msg))
+		if !playing {
+			go func() { //ゲーム中の処理
+				playing = true
+				nextKey = string(azList[0])
+				elapsedTime = 0
+				nextIdx = 0
 
-		if cmd[0] == "startGame" && cmdLen == 2 { //ゲーム開始コマンド。想定コマンド = startGame userName
-			if cmd[1] != "" { //名前が空じゃなかったら、名前を更新
-				name = cmd[1]
-			}
-
-			if !playing {
-				go func() { //ゲーム中の処理
-					playing = true
-					nextKey = string(azList[0])
-					elapsedTime = 0
-					nextIdx = 0
-
-					timer := time.NewTicker(time.Duration(1) * time.Millisecond)
-					for {
-						<-timer.C
-						elapsedTime++
-						if nextIdx == len(azList) { //プレイが終わったら次のプレイ準備をし、スコアの処理を行う
-							playing = false
-							myRank = updateAzGameRanking(name, elapsedTime)
-							sendMsg(conn, "rankingData "+strconv.Itoa(myRank)+" "+strconv.Itoa(elapsedTime)+" "+SliceToCsvStr(azInputGameRankingData[:5]))
-							break
-						}
+				timer := time.NewTicker(time.Duration(1) * time.Millisecond)
+				for {
+					<-timer.C
+					elapsedTime++
+					if nextIdx == len(azList) { //プレイが終わったら次のプレイ準備をし、スコアの処理を行う
+						playing = false
+						myRank = updateAzGameRanking(name, elapsedTime)
+						sendMsg(plData.conn, "rankingData "+strconv.Itoa(myRank)+" "+strconv.Itoa(elapsedTime)+" "+SliceToCsvStr(azInputGameRankingData[:5]))
+						break
 					}
-				}()
-			}
-
-		} else if cmd[0] == "keyDown" && cmdLen == 2 { //連打ボタンコマンド。想定コマンド = keyDown key
-			if playing {
-				if cmd[1] == nextKey {
-					nextIdx++
-					if nextIdx != len(azList) {
-						nextKey = string(azList[nextIdx])
-					}
-				} else {
-					elapsedTime += 1000
 				}
-			}
-		} else if cmd[0] == "getRanking" && cmdLen == 1 { //ランキング取得コマンド。想定コマンド = getRanking
-			sendMsg(conn, "rankingData "+strconv.Itoa(myRank)+" "+strconv.Itoa(elapsedTime)+" "+SliceToCsvStr(azInputGameRankingData[:5]))
+			}()
 		}
+
+	} else if cmd[0] == "keyDown" && cmdLen == 2 { //連打ボタンコマンド。想定コマンド = keyDown key
+		if playing {
+			if cmd[1] == nextKey {
+				nextIdx++
+				if nextIdx != len(azList) {
+					nextKey = string(azList[nextIdx])
+				}
+			} else {
+				elapsedTime += 1000
+			}
+		}
+	} else if cmd[0] == "getRanking" && cmdLen == 1 { //ランキング取得コマンド。想定コマンド = getRanking
+		sendMsg(plData.conn, "rankingData "+strconv.Itoa(myRank)+" "+strconv.Itoa(elapsedTime)+" "+SliceToCsvStr(azInputGameRankingData[:5]))
 	}
 }
