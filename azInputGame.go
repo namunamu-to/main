@@ -74,7 +74,7 @@ func azInputGameGame(plData player, msg string) {
 			}()
 		}
 
-	} else if cmd[0] == "keyDown" && cmdLen == 2 { //連打ボタンコマンド。想定コマンド = keyDown key
+	} else if cmdType == "keyDown" && cmdLen == 2 { //連打ボタンコマンド。想定コマンド = keyDown key
 		if playing {
 			if cmd[1] == nextKey {
 				nextIdx++
@@ -85,7 +85,7 @@ func azInputGameGame(plData player, msg string) {
 				elapsedTime += 1000
 			}
 		}
-	} else if cmd[0] == "getRanking" && cmdLen == 1 { //ランキング取得コマンド。想定コマンド = getRanking
+	} else if cmdType == "getRanking" && cmdLen == 1 { //ランキング取得コマンド。想定コマンド = getRanking
 		sendMsg(plData.conn, "rankingData "+strconv.Itoa(myRank)+" "+strconv.Itoa(elapsedTime)+" "+SliceToCsvStr(azInputGameRankingData[:5]))
 	}
 }

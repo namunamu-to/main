@@ -12,11 +12,13 @@ func mashGame(plData player, msg string) {
 	timeLimit := 10
 	name := "名無し"
 	myRank := len(rankingData)
+	println(nowPushCount)
 
 	//msgのコマンド読み取り
-	cmd, _, cmdLen := readCmd(string(msg))
+	cmd, cmdType, cmdLen := readCmd(msg)
+	println(msg)
 
-	if cmd[0] == "startGame" && cmdLen == 2 { //ゲーム開始コマンド。想定コマンド = startGame userName
+	if cmdType == "startGame" && cmdLen == 2 { //ゲーム開始コマンド。想定コマンド = startGame userName
 		if cmd[1] != "" { //名前が空じゃなかったら、名前を更新
 			name = cmd[1]
 		}
@@ -39,16 +41,15 @@ func mashGame(plData player, msg string) {
 						sendMsg(plData.conn, "rankingData "+strconv.Itoa(myRank)+" "+SliceToCsvStr(rankingData[:5]))
 						return
 					}
-
 				}
 			}()
 		}
 
-	} else if cmd[0] == "pushBtn" && cmdLen == 1 { //連打ボタンコマンド。想定コマンド = pushBtn
+	} else if cmdType == "pushBtn" && cmdLen == 1 { //連打ボタンコマンド。想定コマンド = pushBtn
 		if playing {
 			nowPushCount += 1
 		}
-	} else if cmd[0] == "getRanking" && cmdLen == 1 { //ランキング取得コマンド。想定コマンド = getRanking 自分のスコア
+	} else if cmdType == "getRanking" && cmdLen == 1 { //ランキング取得コマンド。想定コマンド = getRanking 自分のスコア
 		sendMsg(plData.conn, "rankingData "+strconv.Itoa(myRank)+" "+SliceToCsvStr(rankingData[:5]))
 	}
 

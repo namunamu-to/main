@@ -140,6 +140,7 @@ func initHandle(url string) {
 
 			//msgのコマンド読み取り
 			cmd, cmdType, cmdLen := readCmd(json.Msg)
+			println(json.Msg)
 
 			//コマンドに応じた処理をする
 			if cmdType == "moveRoom" && cmdLen == 3 { //マッチングコマンド。想定コマンド = "moveRoom ルームキー プレイヤー名"
