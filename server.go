@@ -11,8 +11,6 @@ import (
 
 var accessLogFilepath = "./data/accessLog.txt"
 
-var addedHandllers map[string]func(plData player, msg string) = make(map[string]func(plData player, msg string))
-
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
@@ -32,7 +30,7 @@ type room struct {
 
 var rooms = make(map[string]*room) //roomKeyでルーム指定
 
-var mux *http.ServeMux
+var mux *http.ServeMux = http.NewServeMux()
 
 func getPlayerIdx(roomKey string, uid string) int {
 	if !isRoom(roomKey) {
@@ -112,7 +110,7 @@ func sendMsgToAnother(roomKey string, exceptPl player, msg string) {
 	sendMsg(rooms[roomKey].players[toIdx].conn, msg)
 }
 
-func initHandle(url string) {
+func addHandller(category string, url string, fn func(plData player)) {
 	handller := func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "https://galleon.yachiyo.tech")
 
@@ -121,50 +119,18 @@ func initHandle(url string) {
 		conn, _ := upgrader.Upgrade(w, r, nil)
 
 		//ログファイルにアクセスを記録
-		log := time.Now().Format("2006/1/2 15:04:05") + " | " + r.RemoteAddr + url
+		log := time.Now().Format("2006/1/2 15:04:05") + " | " + r.RemoteAddr + " | " + category
 		WriteFileAppend(accessLogFilepath, log)
 
-		plData := player{uid: MakeUuid(), name: "", roomKey: "default", category: "default", conn: conn}
+		plData := player{uid: MakeUuid(), name: "名無し", roomKey: "default", category: category, conn: conn}
 
-		// 無限ループさせることでクライアントからのメッセージを受け付けられる状態にする
-		for {
-			_, msgByte, err := conn.ReadMessage()
-			if err != nil { //通信終了時の処理
-				exitRoom(plData.roomKey, &plData) //部屋から抜ける
-
-				break
-			}
-
-			json, _ := strToMsgJson(string(msgByte))
-			plData.category = json.Category
-
-			//msgのコマンド読み取り
-			cmd, cmdType, cmdLen := readCmd(json.Msg)
-			println(json.Msg)
-
-			//コマンドに応じた処理をする
-			if cmdType == "moveRoom" && cmdLen == 3 { //マッチングコマンド。想定コマンド = "moveRoom ルームキー プレイヤー名"
-				moveRoom(cmd[1], &plData)
-			}
-
-			addedHandllers[plData.category](plData, json.Msg)
-		}
-
+		fn(plData)
 	}
 
 	mux.HandleFunc(url, handller)
 }
 
-func addHandller(category string, fn func(plData player, msg string)) {
-	addedHandllers[category] = fn
-}
-
-func startServer(url string, port string, fullchainPath string, privkeyPath string) {
-	// ハンドラの設定
-	mux = http.NewServeMux() //ミューテックス。すでに起動してるか確認。
-
-	initHandle(url)
-
+func startServer(port string, fullchainPath string, privkeyPath string) {
 	//tls設定
 	cfg := &tls.Config{
 		ClientAuth: tls.RequestClientCert,
@@ -183,6 +149,4 @@ func startServer(url string, port string, fullchainPath string, privkeyPath stri
 		println("サーバー起動に失敗")
 		println(err.Error())
 	}
-
-	makeRoom("default")
 }

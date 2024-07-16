@@ -5,54 +5,58 @@ import (
 	"time"
 )
 
-func mashGame(plData player, msg string) {
+func mashGame(plData player) {
 	// プレイ中の情報
 	playing := false
 	nowPushCount := 0
 	timeLimit := 10
 	name := "名無し"
 	myRank := len(rankingData)
-	println(nowPushCount)
 
-	//msgのコマンド読み取り
-	cmd, cmdType, cmdLen := readCmd(msg)
-	println(msg)
-
-	if cmdType == "startGame" && cmdLen == 2 { //ゲーム開始コマンド。想定コマンド = startGame userName
-		if cmd[1] != "" { //名前が空じゃなかったら、名前を更新
-			name = cmd[1]
+	for {
+		_, msgByte, err := plData.conn.ReadMessage()
+		if err != nil { //通信終了時の処理
+			break
 		}
 
-		if !playing {
-			timeLimit = 10
-			playing = true
-			nowPushCount = 0
+		cmd, cmdType, cmdLen := readCmd(string(msgByte))
 
-			//ゲーム中の処理
-			go func() {
+		if cmdType == "startGame" && cmdLen == 2 { //ゲーム開始コマンド。想定コマンド = startGame userName
+			if cmd[1] != "" { //名前が空じゃなかったら、名前を更新
+				name = cmd[1]
+			}
+
+			if !playing {
 				timeLimit = 10
-				timer := time.NewTicker(time.Duration(1) * time.Second)
-				for {
-					<-timer.C
-					timeLimit--
-					if timeLimit == 0 { //プレイが終わったら次のプレイ準備をし、スコアの処理を行う
-						playing = false
-						myRank = updateRanking(name, nowPushCount)
-						sendMsg(plData.conn, "rankingData "+strconv.Itoa(myRank)+" "+SliceToCsvStr(rankingData[:5]))
-						return
+				playing = true
+				nowPushCount = 0
+
+				//ゲーム中の処理
+				go func() {
+					timeLimit = 10
+					timer := time.NewTicker(time.Duration(1) * time.Second)
+					for {
+						<-timer.C
+						timeLimit--
+						if timeLimit == 0 { //プレイが終わったら次のプレイ準備をし、スコアの処理を行う
+							playing = false
+							myRank = updateRanking(name, nowPushCount)
+							sendMsg(plData.conn, "rankingData "+strconv.Itoa(myRank)+" "+SliceToCsvStr(rankingData[:5]))
+							return
+						}
 					}
-				}
-			}()
+				}()
+			}
+
+		} else if cmdType == "pushBtn" && cmdLen == 1 { //連打ボタンコマンド。想定コマンド = pushBtn
+			if playing {
+				nowPushCount += 1
+			}
+		} else if cmdType == "getRanking" && cmdLen == 1 { //ランキング取得コマンド。想定コマンド = getRanking 自分のスコア
+			sendMsg(plData.conn, "rankingData "+strconv.Itoa(myRank)+" "+SliceToCsvStr(rankingData[:5]))
 		}
 
-	} else if cmdType == "pushBtn" && cmdLen == 1 { //連打ボタンコマンド。想定コマンド = pushBtn
-		if playing {
-			nowPushCount += 1
-		}
-	} else if cmdType == "getRanking" && cmdLen == 1 { //ランキング取得コマンド。想定コマンド = getRanking 自分のスコア
-		sendMsg(plData.conn, "rankingData "+strconv.Itoa(myRank)+" "+SliceToCsvStr(rankingData[:5]))
 	}
-
 }
 
 type Files struct {

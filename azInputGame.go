@@ -37,7 +37,7 @@ func updateAzGameRanking(userName string, newScore int) int {
 	return ranking + 1
 }
 
-func azInputGameGame(plData player, msg string) {
+func azInputGameGame(plData player) {
 	//プレイ中の情報
 	playing := false
 	nextKey := string(azList[0])
@@ -46,46 +46,53 @@ func azInputGameGame(plData player, msg string) {
 	name := "名無し"
 	myRank := len(azInputGameRankingData)
 
-	cmd, cmdType, cmdLen := readCmd(msg)
-
-	if cmdType == "startGame" && cmdLen == 2 { //ゲーム開始コマンド。想定コマンド = startGame userName
-		if cmd[1] != "" { //名前が空じゃなかったら、名前を更新
-			name = cmd[1]
+	for {
+		_, msgByte, err := plData.conn.ReadMessage()
+		if err != nil { //通信終了時の処理
+			break
 		}
 
-		if !playing {
-			go func() { //ゲーム中の処理
-				playing = true
-				nextKey = string(azList[0])
-				elapsedTime = 0
-				nextIdx = 0
+		cmd, cmdType, cmdLen := readCmd(string(msgByte))
 
-				timer := time.NewTicker(time.Duration(1) * time.Millisecond)
-				for {
-					<-timer.C
-					elapsedTime++
-					if nextIdx == len(azList) { //プレイが終わったら次のプレイ準備をし、スコアの処理を行う
-						playing = false
-						myRank = updateAzGameRanking(name, elapsedTime)
-						sendMsg(plData.conn, "rankingData "+strconv.Itoa(myRank)+" "+strconv.Itoa(elapsedTime)+" "+SliceToCsvStr(azInputGameRankingData[:5]))
-						break
-					}
-				}
-			}()
-		}
-
-	} else if cmdType == "keyDown" && cmdLen == 2 { //連打ボタンコマンド。想定コマンド = keyDown key
-		if playing {
-			if cmd[1] == nextKey {
-				nextIdx++
-				if nextIdx != len(azList) {
-					nextKey = string(azList[nextIdx])
-				}
-			} else {
-				elapsedTime += 1000
+		if cmdType == "startGame" && cmdLen == 2 { //ゲーム開始コマンド。想定コマンド = startGame userName
+			if cmd[1] != "" { //名前が空じゃなかったら、名前を更新
+				name = cmd[1]
 			}
+
+			if !playing {
+				go func() { //ゲーム中の処理
+					playing = true
+					nextKey = string(azList[0])
+					elapsedTime = 0
+					nextIdx = 0
+
+					timer := time.NewTicker(time.Duration(1) * time.Millisecond)
+					for {
+						<-timer.C
+						elapsedTime++
+						if nextIdx == len(azList) { //プレイが終わったら次のプレイ準備をし、スコアの処理を行う
+							playing = false
+							myRank = updateAzGameRanking(name, elapsedTime)
+							sendMsg(plData.conn, "rankingData "+strconv.Itoa(myRank)+" "+strconv.Itoa(elapsedTime)+" "+SliceToCsvStr(azInputGameRankingData[:5]))
+							break
+						}
+					}
+				}()
+			}
+
+		} else if cmdType == "keyDown" && cmdLen == 2 { //連打ボタンコマンド。想定コマンド = keyDown key
+			if playing {
+				if cmd[1] == nextKey {
+					nextIdx++
+					if nextIdx != len(azList) {
+						nextKey = string(azList[nextIdx])
+					}
+				} else {
+					elapsedTime += 1000
+				}
+			}
+		} else if cmdType == "getRanking" && cmdLen == 1 { //ランキング取得コマンド。想定コマンド = getRanking
+			sendMsg(plData.conn, "rankingData "+strconv.Itoa(myRank)+" "+strconv.Itoa(elapsedTime)+" "+SliceToCsvStr(azInputGameRankingData[:5]))
 		}
-	} else if cmdType == "getRanking" && cmdLen == 1 { //ランキング取得コマンド。想定コマンド = getRanking
-		sendMsg(plData.conn, "rankingData "+strconv.Itoa(myRank)+" "+strconv.Itoa(elapsedTime)+" "+SliceToCsvStr(azInputGameRankingData[:5]))
 	}
 }
