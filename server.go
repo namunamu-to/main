@@ -58,7 +58,6 @@ func enterRoom(roomKey string, player *player) {
 		rooms[roomKey].players = append(rooms[roomKey].players, *player)
 		player.roomKey = roomKey
 	}
-	println("roomKey :", player.roomKey)
 }
 
 func exitRoom(roomKey string, plData *player) {

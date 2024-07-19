@@ -59,17 +59,11 @@ func mashGame(plData player) {
 	}
 }
 
-type Files struct {
-	ranking   string
-	accessLog string
+var mashGameFiles = map[string]string{
+	"ranking": "./data/mashGameRanking.csv",
 }
 
-var files = Files{
-	ranking:   "./data/mashGameRanking.csv",
-	accessLog: "./data/mashGameAccessLog.txt",
-}
-
-var rankingData = ReadCsv(files.ranking)
+var rankingData = ReadCsv(mashGameFiles["ranking"])
 
 // ランキング更新
 func updateRanking(userName string, newScore int) int {
@@ -91,6 +85,6 @@ func updateRanking(userName string, newScore int) int {
 	slice3 := rankingData[ranking:]
 	slice2 = append(slice2, slice3...)
 	rankingData = append(slice1, slice2...)
-	WriteCsv(files.ranking, rankingData)
+	WriteCsv(mashGameFiles["ranking"], rankingData)
 	return ranking + 1
 }

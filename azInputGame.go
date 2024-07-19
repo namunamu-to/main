@@ -6,8 +6,7 @@ import (
 )
 
 var azInputGameFiles = map[string]string{
-	"ranking":   "./data/azInputGameRanking.csv",
-	"accessLog": "./data/azInputGameAccessLog.txt",
+	"ranking": "./data/azInputGameRanking.csv",
 }
 
 var azInputGameRankingData = ReadCsv(azInputGameFiles["ranking"])
